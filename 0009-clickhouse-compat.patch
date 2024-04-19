@@ -1,0 +1,65 @@
+--- a/sql/sys_vars.cc
++++ b/sql/sys_vars.cc
+@@ -2501,6 +2501,13 @@
+     "check_proxy_users is enabled.",
+     GLOBAL_VAR(sha256_password_proxy_users), CMD_LINE(OPT_ARG), DEFAULT(false));
+
++static Sys_var_bool Sys_log_bin_use_v1_row_events(
++    "log_bin_use_v1_row_events",
++    "Not used, added to compatible with ClickHouse",
++    READ_ONLY NON_PERSIST GLOBAL_VAR(log_bin_use_v1_row_events),
++    NO_CMD_LINE, DEFAULT(false),
++    NO_MUTEX_GUARD, NOT_IN_BINLOG, ON_CHECK(nullptr), ON_UPDATE(nullptr));
++
+ static Sys_var_charptr Sys_log_error(
+     "log_error", "Error log file",
+     READ_ONLY NON_PERSIST GLOBAL_VAR(log_error_dest),
+
+--- a/sql/mysqld.h
++++ b/sql/mysqld.h
+@@ -329,6 +329,7 @@
+ extern ulong opt_mts_replica_parallel_workers;
+ extern ulonglong opt_mts_pending_jobs_size_max;
+ extern ulong rpl_stop_replica_timeout;
++extern bool log_bin_use_v1_row_events;
+ extern ulong what_to_log, flush_time;
+ extern ulonglong denied_connections;
+ extern ulong max_prepared_stmt_count, prepared_stmt_count;
+
+--- a/sql/mysqld.cc
++++ b/sql/mysqld.cc
+@@ -1401,6 +1401,7 @@
+ ulong binlog_stmt_cache_use = 0, binlog_stmt_cache_disk_use = 0;
+ ulong max_connections, max_connect_errors;
+ ulong rpl_stop_replica_timeout = LONG_TIMEOUT;
++bool log_bin_use_v1_row_events = false;
+ bool thread_cache_size_specified = false;
+ bool host_cache_size_specified = false;
+ bool table_definition_cache_specified = false;
+
+--- a/sql/auth/mysql_native_password.cc
++++ b/sql/auth/mysql_native_password.cc
+@@ -84,23 +84,10 @@
+ */
+ /* clang-format on */
+
+-static void native_password_authentication_deprecation_warning() {
+-  /*
+-    Deprecate message for mysql_native_password plugin.
+-  */
+-  LogPluginErr(WARNING_LEVEL, ER_SERVER_WARN_DEPRECATED,
+-               Cached_authentication_plugins::get_plugin_name(
+-                   PLUGIN_MYSQL_NATIVE_PASSWORD),
+-               Cached_authentication_plugins::get_plugin_name(
+-                   PLUGIN_CACHING_SHA2_PASSWORD));
+-}
+-
+ static int generate_native_password(char *outbuf, unsigned int *buflen,
+                                     const char *inbuf, unsigned int inbuflen) {
+   THD *thd = current_thd;
+
+-  native_password_authentication_deprecation_warning();
+-
+   if (!thd->m_disable_password_validation) {
+     if (my_validate_password_policy(inbuf, inbuflen)) return 1;
+   }
