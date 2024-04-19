@@ -63,3 +63,12 @@
    if (!thd->m_disable_password_validation) {
      if (my_validate_password_policy(inbuf, inbuflen)) return 1;
    }
+@@ -206,8 +193,6 @@
+
+   DBUG_TRACE;
+
+-  native_password_authentication_deprecation_warning();
+-
+   /* generate the scramble, or reuse the old one */
+   if (mpvio->scramble[SCRAMBLE_LENGTH])
+     generate_user_salt(mpvio->scramble, SCRAMBLE_LENGTH + 1);
